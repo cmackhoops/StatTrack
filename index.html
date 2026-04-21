@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StatTrack">
+<meta name="theme-color" content="#0d1117">
+<title>StatTrack</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@400;600;700&display=swap');
+
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --surface2: #21262d;
+    --border:   #30363d;
+    --border2:  #484f58;
+    --text:     #e6edf3;
+    --muted:    #7d8590;
+    --accent:   #f78166;
+    --accent2:  #79c0ff;
+    --green:    #3fb950;
+    --gold:     #d29922;
+    --red:      #f85149;
+    --radius:   10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Barlow Condensed', sans-serif; overflow: hidden; }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; height: 100dvh; }
+
+  /* ── Top bar ── */
+  .topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px 8px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .topbar-title { font-size: 20px; font-weight: 700; letter-spacing: 1px; color: var(--accent); flex: 1; }
+  .topbar select {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    padding: 5px 8px; flex: 1; min-width: 0;
+  }
+  .topbar input.opp {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: 13px;
+    padding: 5px 8px; flex: 1.5; min-width: 0;
+  }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  /* ── Category tabs ── */
+  .cat-bar {
+    display: flex; gap: 6px; padding: 8px 12px;
+    overflow-x: auto; flex-shrink: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+  }
+  .cat-bar::-webkit-scrollbar { display: none; }
+  .cat-btn {
+    flex-shrink: 0; font-family: inherit; font-size: 12px; font-weight: 600;
+    letter-spacing: .5px; padding: 5px 14px;
+    border: 1px solid var(--border); border-radius: 20px;
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: all .15s;
+  }
+  .cat-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── Scrollable table area ── */
+  .table-wrap { flex: 1; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  table { width: 100%; border-collapse: collapse; min-width: max-content; }
+  thead th {
+    position: sticky; top: 0; z-index: 5;
+    font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+    color: var(--muted); text-align: center; padding: 6px 4px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th.name-th { text-align: left; padding-left: 12px; min-width: 90px; position: sticky; left: 0; z-index: 6; background: var(--surface); }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,.02); }
+  td { padding: 3px 3px; vertical-align: middle; }
+  td.name-td {
+    padding-left: 12px; white-space: nowrap;
+    position: sticky; left: 0; z-index: 2;
+    background: var(--bg);
+  }
+  tbody tr:nth-child(even) td.name-td { background: #0f1419; }
+  .pname { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .pnum  { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* ── Stat cell ── */
+  .sc { display: flex; align-items: center; justify-content: center; gap: 2px; }
+  .sb {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid var(--border2); background: var(--surface2);
+    color: var(--text); font-size: 17px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; user-select: none; transition: background .1s;
+  }
+  .sb:active { background: var(--border); transform: scale(.92); }
+  .sv {
+    font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500;
+    min-width: 28px; text-align: center; color: var(--text);
+    cursor: pointer; border-bottom: 1px dashed var(--border2);
+    padding: 0 2px; user-select: none;
+  }
+  .sv.pos { color: var(--green); }
+  .sv.neg { color: var(--red); }
+  .auto-v {
+    font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500;
+    text-align: center; color: var(--gold); padding: 0 6px; min-width: 32px;
+  }
+  .calc-v {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--muted); text-align: center; padding: 0 4px; white-space: nowrap;
+  }
+  .csub { font-size: 9px; color: var(--muted); text-align: center; line-height: 1.1; }
+
+  /* ── Bottom bar ── */
+  .botbar {
+    display: flex; gap: 8px; padding: 8px 12px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    flex-shrink: 0; padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .bot-btn {
+    flex: 1; font-family: inherit; font-size: 13px; font-weight: 600;
+    letter-spacing: .5px; padding: 10px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface2); color: var(--text); cursor: pointer;
+  }
+  .bot-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .bot-btn:active { opacity: .75; }
+
+  /* ── Panels (roster, edit) ── */
+  .overlay {
+    display: none; position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,0,0,.7); align-items: flex-end; justify-content: center;
+  }
+  .overlay.open { display: flex; }
+  .sheet {
+    width: 100%; max-width: 480px;
+    background: var(--surface); border-radius: 18px 18px 0 0;
+    border: 1px solid var(--border); padding: 16px 16px max(16px,env(safe-area-inset-bottom));
+    max-height: 85vh; overflow-y: auto;
+  }
+  .sheet-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 12px; letter-spacing: .5px; }
+  .sheet-note  { font-size: 12px; color: var(--muted); margin-bottom: 12px; line-height: 1.4; }
+
+  /* Roster rows */
+  .r-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .r-idx { font-size: 11px; color: var(--muted); width: 16px; text-align: center; font-family: 'DM Mono', monospace; }
+  .r-row input {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: 14px; padding: 7px 10px;
+  }
+  .r-row input.rname { flex: 3; }
+  .r-row input.rnum  { flex: 1; min-width: 0; }
+  .sheet-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .sheet-actions button {
+    flex: 1; font-family: inherit; font-size: 14px; font-weight: 600;
+    padding: 10px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer;
+  }
+  .sheet-actions .confirm { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Edit popup */
+  .edit-sheet { text-align: center; }
+  .edit-label { font-size: 13px; color: var(--muted); margin-bottom: 8px; letter-spacing: .5px; }
+  .edit-val-row { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px; }
+  .edit-big-btn {
+    width: 52px; height: 52px; border-radius: 50%;
+    border: 2px solid var(--border2); background: var(--surface2);
+    color: var(--text); font-size: 28px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .edit-big-btn:active { background: var(--border); }
+  #editNum {
+    font-family: 'DM Mono', monospace; font-size: 42px; font-weight: 500;
+    color: var(--text); width: 100px; text-align: center;
+    background: transparent; border: none; border-bottom: 2px solid var(--accent);
+    padding: 4px; -moz-appearance: textfield;
+  }
+  #editNum::-webkit-outer-spin-button, #editNum::-webkit-inner-spin-button { -webkit-appearance: none; }
+  #editNum:focus { outline: none; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: var(--green); color: #000; padding: 8px 20px;
+    border-radius: 20px; font-size: 13px; font-weight: 600;
+    opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; z-index: 99;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-title">STATTRACK</span>
+    <select id="gameSelect"></select>
+    <input class="opp" id="opponent" placeholder="vs Opponent" />
+    <button class="icon-btn" onclick="openRoster()" title="Edit roster">&#9707;</button>
+  </div>
+  <div class="cat-bar" id="catBar"></div>
+  <div class="table-wrap">
+    <table><thead id="tHead"></thead><tbody id="tBody"></tbody></table>
+  </div>
+  <div class="botbar">
+    <button class="bot-btn" onclick="copyCSV()">Copy CSV</button>
+    <button class="bot-btn primary" onclick="newGame()">+ New game</button>
+  </div>
+</div>
+
+<!-- Roster overlay -->
+<div class="overlay" id="rosterOverlay">
+  <div class="sheet">
+    <div class="sheet-title">Edit roster</div>
+    <div class="sheet-note">Enter player name and jersey number. Row position matches your CSV paste order.</div>
+    <div id="rosterRows"></div>
+    <div class="sheet-actions">
+      <button onclick="closeRoster(false)">Cancel</button>
+      <button class="confirm" onclick="closeRoster(true)">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit overlay -->
+<div class="overlay" id="editOverlay">
+  <div class="sheet edit-sheet">
+    <div class="edit-label" id="editLabel">Editing</div>
+    <div class="edit-val-row">
+      <button class="edit-big-btn" id="editDec">−</button>
+      <input type="number" id="editNum" value="0" />
+      <button class="edit-big-btn" id="editInc">+</button>
+    </div>
+    <div class="sheet-actions">
+      <button onclick="closeEdit(false)">Cancel</button>
+      <button class="confirm" onclick="closeEdit(true)">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DEF_ROSTER=[
+  {name:'Player 1',num:'1'},{name:'Player 2',num:'2'},{name:'Player 3',num:'3'},
+  {name:'Player 4',num:'4'},{name:'Player 5',num:'5'},{name:'Player 6',num:'6'},
+  {name:'Player 7',num:'7'},{name:'Player 8',num:'8'},{name:'Player 9',num:'9'},
+  {name:'Player 10',num:'10'},
+];
+const KEYS=['fgm','fga','tpm','tpa','ftm','fta','oreb','dreb','ast','stl','blk','tov','pf','pm','min'];
+const CATS=[
+  {id:'scoring',label:'Scoring',cols:[
+    {type:'auto',key:'pts',label:'PTS'},
+    {type:'tap',key:'fgm',label:'FGM',sub:'makes'},
+    {type:'tap',key:'fga',label:'FGA',sub:'attempts'},
+    {type:'tap',key:'tpm',label:'3PM'},
+    {type:'tap',key:'tpa',label:'3PA'},
+    {type:'tap',key:'ftm',label:'FTM'},
+    {type:'tap',key:'fta',label:'FTA'},
+    {type:'tap',key:'min',label:'MIN'},
+  ],calcs:[{label:'FT%',fn:c=>c.ftpct}]},
+  {id:'shooting',label:'Shooting',cols:[
+    {type:'tap',key:'fgm',label:'FGM',sub:'makes'},
+    {type:'tap',key:'fga',label:'FGA',sub:'attempts'},
+    {type:'tap',key:'tpm',label:'3PM'},
+    {type:'tap',key:'tpa',label:'3PA'},
+    {type:'tap',key:'ftm',label:'FTM'},
+    {type:'tap',key:'fta',label:'FTA'},
+  ],calcs:[
+    {label:'FG%',fn:c=>c.fgpct},
+    {label:'3P%',fn:c=>c.tpct},
+    {label:'FT%',fn:c=>c.ftpct},
+    {label:'TS%',fn:c=>c.ts},
+  ]},
+  {id:'rebounds',label:'Rebounds',cols:[
+    {type:'tap',key:'oreb',label:'OREB'},
+    {type:'tap',key:'dreb',label:'DREB'},
+  ],calcs:[{label:'REB',fn:c=>c.reb}]},
+  {id:'defense',label:'Defense',cols:[
+    {type:'tap',key:'ast',label:'AST'},
+    {type:'tap',key:'stl',label:'STL'},
+    {type:'tap',key:'blk',label:'BLK'},
+    {type:'tap',key:'tov',label:'TO'},
+    {type:'tap',key:'pf', label:'PF'},
+    {type:'tap',key:'pm', label:'+/-',signed:true},
+  ],calcs:[{label:'EFF',fn:c=>c.eff}]},
+];
+
+let S;
+try{S=JSON.parse(localStorage.getItem('st_v1')||'null');}catch(e){}
+if(!S) S={roster:DEF_ROSTER,games:{},cur:1,cat:'scoring'};
+function save(){try{localStorage.setItem('st_v1',JSON.stringify(S));}catch(e){}}
+function getGame(g){if(!S.games[g])S.games[g]={players:{},opp:''};return S.games[g];}
+function getPlayer(g,pi){
+  const gd=getGame(g);
+  if(!gd.players[pi])gd.players[pi]={};
+  KEYS.forEach(k=>{if(gd.players[pi][k]===undefined)gd.players[pi][k]=0;});
+  return gd.players[pi];
+}
+function pts(pd){return(pd.fgm*2)+pd.tpm+pd.ftm;}
+function calc(pd){
+  const p=pts(pd),reb=pd.oreb+pd.dreb;
+  return{
+    pts:p,reb,
+    fgpct:pd.fga>0?((pd.fgm/pd.fga)*100).toFixed(1)+'%':'—',
+    tpct:pd.tpa>0?((pd.tpm/pd.tpa)*100).toFixed(1)+'%':'—',
+    ftpct:pd.fta>0?((pd.ftm/pd.fta)*100).toFixed(1)+'%':'—',
+    eff:p+reb+pd.ast+pd.stl+pd.blk-pd.tov-(pd.fga-pd.fgm)-(pd.fta-pd.ftm),
+    ts:(pd.fga+0.44*pd.fta)>0?(p/(2*(pd.fga+0.44*pd.fta))*100).toFixed(1)+'%':'—',
+  };
+}
+function clamp(pd){
+  if(pd.fga<pd.fgm)pd.fga=pd.fgm;
+  if(pd.tpa<pd.tpm)pd.tpa=pd.tpm;
+  if(pd.fga<pd.tpa)pd.fga=pd.tpa;
+  if(pd.fta<pd.ftm)pd.fta=pd.ftm;
+  KEYS.forEach(k=>{if(k!=='pm'&&pd[k]<0)pd[k]=0;});
+}
+function delta(pd,key,d){
+  if(key==='fgm'){pd.fgm=Math.max(0,(pd.fgm||0)+d);pd.fga=Math.max(pd.fgm,(pd.fga||0)+d);if(pd.fga<0)pd.fga=pd.fgm;}
+  else if(key==='fga'){pd.fga=Math.max(pd.fgm,Math.max(0,(pd.fga||0)+d));}
+  else if(key==='tpm'){pd.tpm=Math.max(0,(pd.tpm||0)+d);pd.tpa=Math.max(pd.tpm,(pd.tpa||0)+d);pd.fgm=Math.max(0,(pd.fgm||0)+d);pd.fga=Math.max(pd.fgm,(pd.fga||0)+d);}
+  else if(key==='tpa'){pd.tpa=Math.max(pd.tpm,(pd.tpa||0)+d);pd.fga=Math.max(pd.fgm,(pd.fga||0)+d);}
+  else if(key==='ftm'){pd.ftm=Math.max(0,(pd.ftm||0)+d);pd.fta=Math.max(pd.ftm,(pd.fta||0)+d);}
+  else if(key==='fta'){pd.fta=Math.max(pd.ftm,(pd.fta||0)+d);}
+  else{pd[key]=(pd[key]||0)+d;if(key!=='pm'&&pd[key]<0)pd[key]=0;}
+}
+function dv(v,signed){return signed&&v>0?'+'+v:String(v);}
+function dc(v,signed){return 'sv'+(signed?(v>0?' pos':v<0?' neg':''):'');}
+
+function refreshAll(){
+  const g=S.cur,cat=CATS.find(x=>x.id===S.cat);
+  S.roster.forEach((_,pi)=>{
+    const pd=getPlayer(g,pi),c=calc(pd);
+    cat.cols.forEach(col=>{
+      if(col.type==='auto'){const el=document.getElementById('av'+pi);if(el)el.textContent=c.pts;}
+      else{const el=document.getElementById('sv'+pi+'_'+col.key);if(el){const v=pd[col.key]||0;el.textContent=dv(v,!!col.signed);el.className=dc(v,!!col.signed);}}
+    });
+    (cat.calcs||[]).forEach(cc=>{const el=document.getElementById('cv'+pi+'_'+cc.label);if(el)el.textContent=cc.fn(c);});
+  });
+}
+
+function buildCatBar(){
+  const bar=document.getElementById('catBar');bar.innerHTML='';
+  CATS.forEach(cat=>{
+    const b=document.createElement('button');
+    b.className='cat-btn'+(cat.id===S.cat?' active':'');
+    b.textContent=cat.label;
+    b.onclick=()=>{S.cat=cat.id;save();buildTable();buildCatBar();};
+    bar.appendChild(b);
+  });
+}
+
+function buildTable(){
+  const g=S.cur,cat=CATS.find(c=>c.id===S.cat),calcs=cat.calcs||[];
+  let h=`<tr><th class="name-th">Player</th>`;
+  cat.cols.forEach(col=>{h+=`<th>${col.label}${col.sub?`<div class="csub">${col.sub}</div>`:''}</th>`;});
+  calcs.forEach(cc=>{h+=`<th>${cc.label}</th>`;});
+  h+=`</tr>`;
+  document.getElementById('tHead').innerHTML=h;
+
+  const old=document.getElementById('tBody');
+  const nb=old.cloneNode(false);
+  old.parentNode.replaceChild(nb,old);
+
+  S.roster.forEach((p,pi)=>{
+    const pd=getPlayer(g,pi),c=calc(pd),tr=document.createElement('tr');
+    let cells=`<td class="name-td"><div class="pname">${p.name}</div><div class="pnum">#${p.num||'—'}</div></td>`;
+    cat.cols.forEach(col=>{
+      if(col.type==='auto'){cells+=`<td><div class="auto-v" id="av${pi}">${c.pts}</div></td>`;}
+      else{
+        const v=pd[col.key]||0,signed=!!col.signed;
+        cells+=`<td><div class="sc">
+          <button class="sb" data-act="dec" data-pi="${pi}" data-key="${col.key}">−</button>
+          <span class="${dc(v,signed)}" id="sv${pi}_${col.key}" data-act="edit" data-pi="${pi}" data-key="${col.key}" data-label="${col.label}" data-signed="${signed?1:0}">${dv(v,signed)}</span>
+          <button class="sb" data-act="inc" data-pi="${pi}" data-key="${col.key}">+</button>
+        </div></td>`;
+      }
+    });
+    calcs.forEach(cc=>{cells+=`<td class="calc-v" id="cv${pi}_${cc.label}">${cc.fn(c)}</td>`;});
+    tr.innerHTML=cells;nb.appendChild(tr);
+  });
+
+  nb.addEventListener('click',e=>{
+    const el=e.target.closest('[data-act]');if(!el)return;
+    const act=el.dataset.act,pi=+el.dataset.pi,key=el.dataset.key,g=S.cur,pd=getPlayer(g,pi);
+    if(act==='inc'||act==='dec'){delta(pd,key,act==='inc'?1:-1);save();refreshAll();}
+    else if(act==='edit'){openEdit(pi,key,el.dataset.label,el.dataset.signed==='1');}
+  });
+}
+
+function buildGameSelect(){
+  const sel=document.getElementById('gameSelect');sel.innerHTML='';
+  for(let i=1;i<=20;i++){const o=document.createElement('option');o.value=i;o.textContent='Game '+i;if(i===S.cur)o.selected=true;sel.appendChild(o);}
+  sel.onchange=()=>{S.cur=+sel.value;save();document.getElementById('opponent').value=getGame(S.cur).opp||'';buildTable();};
+}
+
+document.getElementById('opponent').addEventListener('input',e=>{getGame(S.cur).opp=e.target.value;save();});
+
+// ── Roster ──
+function openRoster(){
+  let h='';
+  S.roster.forEach((p,i)=>{
+    h+=`<div class="r-row"><span class="r-idx">${i+1}</span>
+      <input class="rname" id="rn${i}" value="${p.name}" placeholder="Name" />
+      <input class="rnum"  id="ru${i}" value="${p.num}"  placeholder="#" />
+    </div>`;
+  });
+  document.getElementById('rosterRows').innerHTML=h;
+  document.getElementById('rosterOverlay').classList.add('open');
+}
+function closeRoster(save_){
+  if(save_){
+    S.roster=S.roster.map((_,i)=>({
+      name:document.getElementById('rn'+i)?.value.trim()||'Player '+(i+1),
+      num: document.getElementById('ru'+i)?.value.trim()||''+(i+1),
+    }));
+    save();buildTable();
+  }
+  document.getElementById('rosterOverlay').classList.remove('open');
+}
+
+// ── Edit ──
+let editCtx=null;
+const editOverlay=document.getElementById('editOverlay');
+const editNum=document.getElementById('editNum');
+document.getElementById('editDec').onclick=()=>{editNum.value=+editNum.value-1;};
+document.getElementById('editInc').onclick=()=>{editNum.value=+editNum.value+1;};
+editNum.addEventListener('keydown',e=>{if(e.key==='Enter')closeEdit(true);if(e.key==='Escape')closeEdit(false);});
+
+function openEdit(pi,key,label,signed){
+  editCtx={pi,key,signed};
+  document.getElementById('editLabel').textContent=S.roster[pi].name+' — '+label;
+  editNum.value=getPlayer(S.cur,pi)[key]||0;
+  editOverlay.classList.add('open');
+  setTimeout(()=>{editNum.focus();editNum.select();},80);
+}
+function closeEdit(confirm){
+  if(confirm&&editCtx){
+    const pd=getPlayer(S.cur,editCtx.pi);
+    const v=parseInt(editNum.value,10);
+    pd[editCtx.key]=isNaN(v)?0:(editCtx.signed?v:Math.max(0,v));
+    clamp(pd);save();refreshAll();
+  }
+  editOverlay.classList.remove('open');editCtx=null;
+}
+
+// ── New game ──
+function newGame(){
+  const next=Math.max(...Object.keys(S.games).map(Number),S.cur)+1;
+  if(next>20){toast('Max 20 games reached');return;}
+  S.cur=next;save();
+  document.getElementById('opponent').value='';
+  buildGameSelect();buildTable();
+  toast('Game '+next+' started');
+}
+
+// ── CSV ──
+function copyCSV(){
+  const g=S.cur,rows=[];
+  S.roster.forEach((p,i)=>{
+    const pd=getPlayer(g,i),c=calc(pd);
+    rows.push([p.name,p.num,pd.min,c.pts,pd.fgm,pd.fga,c.fgpct,pd.tpm,pd.tpa,c.tpct,pd.ftm,pd.fta,c.ftpct,pd.oreb,pd.dreb,c.reb,pd.ast,pd.stl,pd.blk,pd.tov,pd.pf,pd.pm,c.eff,c.ts].join(','));
+  });
+  navigator.clipboard.writeText(rows.join('\n')).then(()=>toast('Copied — paste into A5 in Excel')).catch(()=>toast('Copy failed'));
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ── Close overlays on backdrop tap ──
+document.getElementById('rosterOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeRoster(false);});
+document.getElementById('editOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEdit(false);});
+
+buildGameSelect();
+document.getElementById('opponent').value=getGame(S.cur).opp||'';
+buildCatBar();
+buildTable();
+</script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./sw.js").catch(()=>{});});}</script></body>
+</html>
