@@ -264,7 +264,8 @@ const DEF_ROSTER=[
   {name:'Player 1',num:'1'},{name:'Player 2',num:'2'},{name:'Player 3',num:'3'},
   {name:'Player 4',num:'4'},{name:'Player 5',num:'5'},{name:'Player 6',num:'6'},
   {name:'Player 7',num:'7'},{name:'Player 8',num:'8'},{name:'Player 9',num:'9'},
-  {name:'Player 10',num:'10'},
+  {name:'Player 10',num:'10'},{name:'Player 11',num:'11'},{name:'Player 12',num:'12'},
+  {name:'Player 13',num:'13'},{name:'Player 14',num:'14'},{name:'Player 15',num:'15'},
 ];
 const KEYS=['fgm','fga','tpm','tpa','ftm','fta','oreb','dreb','ast','stl','blk','tov','pf','pm','min'];
 const CATS=[
@@ -279,14 +280,17 @@ const CATS=[
     {type:'tap',key:'min',label:'MIN'},
   ],calcs:[{label:'FT%',fn:c=>c.ftpct}]},
   {id:'shooting',label:'Shooting',cols:[
-    {type:'tap',key:'fgm',label:'FGM',sub:'makes'},
-    {type:'tap',key:'fga',label:'FGA',sub:'attempts'},
+    {type:'tap',key:'fgm',label:'FGM',sub:'all makes'},
+    {type:'tap',key:'fga',label:'FGA',sub:'all attempts'},
     {type:'tap',key:'tpm',label:'3PM'},
     {type:'tap',key:'tpa',label:'3PA'},
     {type:'tap',key:'ftm',label:'FTM'},
     {type:'tap',key:'fta',label:'FTA'},
   ],calcs:[
     {label:'FG%',fn:c=>c.fgpct},
+    {label:'2PM',fn:c=>c.twopm},
+    {label:'2PA',fn:c=>c.twopa},
+    {label:'2P%',fn:c=>c.twopct},
     {label:'3P%',fn:c=>c.tpct},
     {label:'FT%',fn:c=>c.ftpct},
     {label:'TS%',fn:c=>c.ts},
@@ -319,9 +323,12 @@ function getPlayer(g,pi){
 function pts(pd){return(pd.fgm*2)+pd.tpm+pd.ftm;}
 function calc(pd){
   const p=pts(pd),reb=pd.oreb+pd.dreb;
+  const twopm=pd.fgm-pd.tpm; const twopa=pd.fga-pd.tpa;
   return{
     pts:p,reb,
     fgpct:pd.fga>0?((pd.fgm/pd.fga)*100).toFixed(1)+'%':'—',
+    twopm:twopm,twopa:twopa,
+    twopct:twopa>0?((twopm/twopa)*100).toFixed(1)+'%':'—',
     tpct:pd.tpa>0?((pd.tpm/pd.tpa)*100).toFixed(1)+'%':'—',
     ftpct:pd.fta>0?((pd.ftm/pd.fta)*100).toFixed(1)+'%':'—',
     eff:p+reb+pd.ast+pd.stl+pd.blk-pd.tov-(pd.fga-pd.fgm)-(pd.fta-pd.ftm),
@@ -418,15 +425,39 @@ document.getElementById('opponent').addEventListener('input',e=>{getGame(S.cur).
 
 // ── Roster ──
 function openRoster(){
+  renderRosterRows();
+  document.getElementById('rosterOverlay').classList.add('open');
+}
+function renderRosterRows(){
   let h='';
   S.roster.forEach((p,i)=>{
-    h+=`<div class="r-row"><span class="r-idx">${i+1}</span>
+    h+=`<div class="r-row" id="rrow${i}"><span class="r-idx">${i+1}</span>
       <input class="rname" id="rn${i}" value="${p.name}" placeholder="Name" />
       <input class="rnum"  id="ru${i}" value="${p.num}"  placeholder="#" />
+      <button onclick="removePlayer(${i})" style="width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:16px;cursor:pointer;flex-shrink:0;">×</button>
     </div>`;
   });
+  h+=`<button onclick="addPlayer()" style="width:100%;margin-top:8px;padding:8px;font-family:inherit;font-size:13px;font-weight:600;border:1px dashed var(--border2);border-radius:var(--radius);background:transparent;color:var(--muted);cursor:pointer;">+ Add player</button>`;
   document.getElementById('rosterRows').innerHTML=h;
-  document.getElementById('rosterOverlay').classList.add('open');
+}
+function addPlayer(){
+  // Save current inputs first
+  S.roster=S.roster.map((_,i)=>({
+    name:document.getElementById('rn'+i)?.value.trim()||'Player '+(i+1),
+    num:document.getElementById('ru'+i)?.value.trim()||''+(i+1),
+  }));
+  if(S.roster.length>=15){toast('Max 15 players');return;}
+  S.roster.push({name:'Player '+(S.roster.length+1),num:''+(S.roster.length+1)});
+  renderRosterRows();
+}
+function removePlayer(idx){
+  S.roster=S.roster.map((_,i)=>({
+    name:document.getElementById('rn'+i)?.value.trim()||'Player '+(i+1),
+    num:document.getElementById('ru'+i)?.value.trim()||''+(i+1),
+  }));
+  if(S.roster.length<=1){toast('Need at least 1 player');return;}
+  S.roster.splice(idx,1);
+  renderRosterRows();
 }
 function closeRoster(save_){
   if(save_){
@@ -479,7 +510,7 @@ function copyCSV(){
   const g=S.cur,rows=[];
   S.roster.forEach((p,i)=>{
     const pd=getPlayer(g,i),c=calc(pd);
-    rows.push([p.name,p.num,pd.min,c.pts,pd.fgm,pd.fga,c.fgpct,pd.tpm,pd.tpa,c.tpct,pd.ftm,pd.fta,c.ftpct,pd.oreb,pd.dreb,c.reb,pd.ast,pd.stl,pd.blk,pd.tov,pd.pf,pd.pm,c.eff,c.ts].join(','));
+    rows.push([p.name,p.num,pd.min,c.pts,pd.fgm,pd.fga,c.fgpct,c.twopm,c.twopa,c.twopct,pd.tpm,pd.tpa,c.tpct,pd.ftm,pd.fta,c.ftpct,pd.oreb,pd.dreb,c.reb,pd.ast,pd.stl,pd.blk,pd.tov,pd.pf,pd.pm,c.eff,c.ts].join(','));
   });
   navigator.clipboard.writeText(rows.join('\n')).then(()=>toast('Copied — paste into A5 in Excel')).catch(()=>toast('Copy failed'));
 }
