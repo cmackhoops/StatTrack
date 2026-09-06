@@ -132,6 +132,28 @@
   }
   .csub { font-size: 9px; color: var(--muted); text-align: center; line-height: 1.1; }
 
+  /* ── Team totals row ── */
+  tfoot td {
+    position: sticky; bottom: 0; z-index: 4;
+    background: var(--surface); border-top: 2px solid var(--gold);
+    padding: 5px 3px;
+  }
+  tfoot td.tot-name {
+    left: 0; z-index: 7; text-align: left; padding-left: 12px;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700;
+    letter-spacing: .5px; color: var(--gold);
+  }
+  .tot-v {
+    font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 600;
+    color: var(--gold); text-align: center; padding: 0 4px; min-width: 28px;
+  }
+  .tot-v.pos { color: var(--green); }
+  .tot-v.neg { color: var(--red); }
+  .tot-calc {
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600;
+    color: var(--gold); text-align: center; padding: 0 4px; white-space: nowrap;
+  }
+
   /* ── Bottom bar ── */
   .botbar {
     display: flex; gap: 8px; padding: 8px 12px;
@@ -220,7 +242,7 @@
   </div>
   <div class="cat-bar" id="catBar"></div>
   <div class="table-wrap">
-    <table><thead id="tHead"></thead><tbody id="tBody"></tbody></table>
+    <table><thead id="tHead"></thead><tbody id="tBody"></tbody><tfoot id="tFoot"></tfoot></table>
   </div>
   <div class="botbar">
     <button class="bot-btn" onclick="copyCSV()">Copy CSV</button>
@@ -354,6 +376,24 @@ function delta(pd,key,d){
 function dv(v,signed){return signed&&v>0?'+'+v:String(v);}
 function dc(v,signed){return 'sv'+(signed?(v>0?' pos':v<0?' neg':''):'');}
 
+function teamTotals(g){
+  const t={}; KEYS.forEach(k=>t[k]=0);
+  S.roster.forEach((_,pi)=>{const pd=getPlayer(g,pi);KEYS.forEach(k=>t[k]+=(pd[k]||0));});
+  return t;
+}
+function buildFoot(){
+  const g=S.cur,cat=CATS.find(c=>c.id===S.cat),calcs=cat.calcs||[];
+  const t=teamTotals(g),c=calc(t);
+  let cells=`<td class="tot-name">TEAM</td>`;
+  cat.cols.forEach(col=>{
+    if(col.type==='auto'){cells+=`<td><div class="tot-v">${c.pts}</div></td>`;}
+    else{const v=t[col.key]||0,signed=!!col.signed;
+      cells+=`<td><div class="tot-v${signed?(v>0?' pos':v<0?' neg':''):''}">${dv(v,signed)}</div></td>`;}
+  });
+  calcs.forEach(cc=>{cells+=`<td class="tot-calc">${cc.fn(c)}</td>`;});
+  document.getElementById('tFoot').innerHTML=`<tr>${cells}</tr>`;
+}
+
 function refreshAll(){
   const g=S.cur,cat=CATS.find(x=>x.id===S.cat);
   S.roster.forEach((_,pi)=>{
@@ -363,7 +403,7 @@ function refreshAll(){
       else{const el=document.getElementById('sv'+pi+'_'+col.key);if(el){const v=pd[col.key]||0;el.textContent=dv(v,!!col.signed);el.className=dc(v,!!col.signed);}}
     });
     (cat.calcs||[]).forEach(cc=>{const el=document.getElementById('cv'+pi+'_'+cc.label);if(el)el.textContent=cc.fn(c);});
-  });
+  });  buildFoot();
 }
 
 function buildCatBar(){
@@ -412,12 +452,12 @@ function buildTable(){
     const act=el.dataset.act,pi=+el.dataset.pi,key=el.dataset.key,g=S.cur,pd=getPlayer(g,pi);
     if(act==='inc'||act==='dec'){delta(pd,key,act==='inc'?1:-1);save();refreshAll();}
     else if(act==='edit'){openEdit(pi,key,el.dataset.label,el.dataset.signed==='1');}
-  });
+  });  buildFoot();
 }
 
 function buildGameSelect(){
   const sel=document.getElementById('gameSelect');sel.innerHTML='';
-  for(let i=1;i<=20;i++){const o=document.createElement('option');o.value=i;o.textContent='Game '+i;if(i===S.cur)o.selected=true;sel.appendChild(o);}
+  for(let i=1;i<=30;i++){const o=document.createElement('option');o.value=i;o.textContent='Game '+i;if(i===S.cur)o.selected=true;sel.appendChild(o);}
   sel.onchange=()=>{S.cur=+sel.value;save();document.getElementById('opponent').value=getGame(S.cur).opp||'';buildTable();};
 }
 
@@ -498,7 +538,7 @@ function closeEdit(confirm){
 // ── New game ──
 function newGame(){
   const next=Math.max(...Object.keys(S.games).map(Number),S.cur)+1;
-  if(next>20){toast('Max 20 games reached');return;}
+  if(next>30){toast('Max 30 games reached');return;}
   S.cur=next;save();
   document.getElementById('opponent').value='';
   buildGameSelect();buildTable();
