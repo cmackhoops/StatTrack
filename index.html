@@ -569,5 +569,19 @@ document.getElementById('opponent').value=getGame(S.cur).opp||'';
 buildCatBar();
 buildTable();
 </script>
-<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./sw.js").catch(()=>{});});}</script></body>
+<script>
+if("serviceWorker" in navigator){
+  var hadController = !!navigator.serviceWorker.controller;
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"})
+      .then(function(reg){ reg.update(); })
+      .catch(function(){});
+  });
+  var refreshing=false;
+  navigator.serviceWorker.addEventListener("controllerchange",function(){
+    if(refreshing||!hadController)return;
+    refreshing=true; window.location.reload();
+  });
+}
+</script></body>
 </html>
